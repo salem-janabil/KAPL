@@ -24,6 +24,33 @@ open build/DerivedData/Build/Products/Debug/KAPL.app
 
 Приложение живёт в строке меню (иконка щита) → **Lock Now**, или горячая клавиша **⌘Esc** из любого приложения.
 
+## DMG для установки
+
+```bash
+scripts/make-dmg.sh
+```
+
+Собирает Release (универсальный: Apple silicon и Intel) и кладёт `build/KAPL-<версия>.dmg`: приложение, ссылка на «Программы», иконка на диске и файле. Версия берётся из `MARKETING_VERSION` в настройках таргета.
+
+По умолчанию подпись ad-hoc: на этом Mac всё работает, а на других macOS заблокирует запуск (Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть»). Для раздачи нужен сертификат Developer ID (Apple Developer Program):
+
+```bash
+xcrun notarytool store-credentials KAPL --apple-id you@example.com --team-id TEAMID   # один раз
+scripts/make-dmg.sh --team TEAMID --notary-profile KAPL
+```
+
+Первый запуск со стандартной раскладкой окна может спросить разрешение управлять Finder; без него DMG всё равно соберётся (`--no-layout` пропускает этот шаг).
+
+## Иконка
+
+Исходник — `Design/AppIcon.png` (1024×1024, сейчас временная). После замены:
+
+```bash
+scripts/set-app-icon.sh
+```
+
+Скрипт заполняет `KAPL/Assets.xcassets/AppIcon.appiconset`; DMG берёт иконку из собранного приложения.
+
 ## Тесты
 
 ```bash
