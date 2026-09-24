@@ -14,8 +14,9 @@ public enum LockReducer {
     ) -> [LockEffect] {
         switch (phase, event) {
         case (.unlocked, .lockRequested(let mode, let at)):
-            phase = .locked(LockSession(mode: mode, lockedAt: at))
-            return [.preventSleep]
+            // Touch ID is armed right away: touching the sensor is enough.
+            phase = .authenticating(LockSession(mode: mode, lockedAt: at))
+            return [.preventSleep, .authenticate]
 
         case (.locked(let session), .unlockRequested):
             phase = .authenticating(session)
@@ -29,8 +30,8 @@ public enum LockReducer {
             return registerFailure(failure, session: session, at: at, phase: &phase, policy: policy)
 
         case (.coolingDown(let session, let until), .cooldownElapsed(let at)) where at >= until:
-            phase = .locked(session)
-            return []
+            phase = .authenticating(session)
+            return [.authenticate]
 
         case (.locked, .breachDetected(let reason)),
              (.authenticating, .breachDetected(let reason)),
@@ -85,8 +86,9 @@ public enum LockReducer {
                 phase = .coolingDown(session, until: until)
                 return [.scheduleCooldownEnd(until)]
             }
-            phase = .locked(session)
-            return []
+            // Keep Touch ID listening: the next touch may be the right finger.
+            phase = .authenticating(session)
+            return [.authenticate]
         }
     }
 }

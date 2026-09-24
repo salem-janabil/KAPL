@@ -14,11 +14,18 @@ struct LockReducerTests {
         .authenticating(LockSession(mode: .privacy, lockedAt: t0, failedAttempts: failed))
     }
 
-    @Test func lockingPreventsSleep() {
+    @Test func lockingPreventsSleepAndArmsTouchID() {
         var phase = LockPhase.unlocked
         let effects = LockReducer.reduce(&phase, .lockRequested(.privacy, at: t0), policy: policy)
-        #expect(phase == locked())
-        #expect(effects == [.preventSleep])
+        #expect(phase == authenticating())
+        #expect(effects == [.preventSleep, .authenticate])
+    }
+
+    @Test func appActivatedDuringAuthenticationEscalates() {
+        var phase = authenticating()
+        let effects = LockReducer.reduce(&phase, .breachDetected(.appActivatedDuringAuthentication), policy: policy)
+        #expect(phase == authenticating())
+        #expect(effects == [.escalate(.shieldBreached(.appActivatedDuringAuthentication))])
     }
 
     @Test func lockingWhileLockedIsIgnored() {
@@ -56,10 +63,11 @@ struct LockReducerTests {
         #expect(effects.isEmpty)
     }
 
-    @Test func rejectionIsCounted() {
+    @Test func rejectionIsCountedAndTouchIDStaysArmed() {
         var phase = authenticating()
-        _ = LockReducer.reduce(&phase, .authenticationFinished(.failure(.rejected), at: t0), policy: policy)
-        #expect(phase == locked(failed: 1))
+        let effects = LockReducer.reduce(&phase, .authenticationFinished(.failure(.rejected), at: t0), policy: policy)
+        #expect(phase == authenticating(failed: 1))
+        #expect(effects == [.authenticate])
     }
 
     @Test func everyThirdFailureCoolsDown() {
@@ -85,8 +93,9 @@ struct LockReducerTests {
         _ = LockReducer.reduce(&phase, .cooldownElapsed(at: t0 + 10), policy: policy)
         #expect(phase == .coolingDown(session, until: t0 + 30))
 
-        _ = LockReducer.reduce(&phase, .cooldownElapsed(at: t0 + 30), policy: policy)
-        #expect(phase == .locked(session))
+        let effects = LockReducer.reduce(&phase, .cooldownElapsed(at: t0 + 30), policy: policy)
+        #expect(phase == .authenticating(session))
+        #expect(effects == [.authenticate])
     }
 
     @Test func tooManyFailuresEscalateAndStillThrottle() {

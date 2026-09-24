@@ -9,13 +9,17 @@ final class AppEnvironment {
 
     private let shield: ShieldController
     private let menuBar: MenuBarController
+    private let lockHotKey: GlobalHotKey
     private let unlockObserver: SystemUnlockObserver
 
     init() {
         let shield = ShieldController()
+        let authenticator = LocalAuthenticator()
+        authenticator.presentTouchID = { [weak shield] context in shield?.showTouchID(for: context) }
+
         let coordinator = LockCoordinator(
             policy: .default,
-            authenticator: LocalAuthenticator(),
+            authenticator: authenticator,
             sleepPreventer: PowerAssertionSleepPreventer(scope: .systemAndDisplay),
             systemLock: SystemScreenLocker(),
             shield: shield
@@ -27,6 +31,10 @@ final class AppEnvironment {
         self.shield = shield
         self.coordinator = coordinator
         self.menuBar = MenuBarController { [weak coordinator] in coordinator?.lock() }
+        self.lockHotKey = GlobalHotKey(
+            keyCode: GlobalHotKey.lockShortcut.keyCode,
+            modifiers: GlobalHotKey.lockShortcut.modifiers
+        ) { [weak coordinator] in coordinator?.lock() }
         self.unlockObserver = SystemUnlockObserver { [weak coordinator] in coordinator?.systemSessionDidUnlock() }
     }
 }

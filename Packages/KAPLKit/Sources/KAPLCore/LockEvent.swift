@@ -21,6 +21,9 @@ public enum AuthResult: Equatable, Sendable {
 public enum BreachReason: Equatable, Sendable {
     /// Another app became active and the shield could not take focus back.
     case lostFocus
+    /// A regular app became active while the Touch ID prompt was up. The
+    /// prompt may hold focus; anything else would get the keyboard.
+    case appActivatedDuringAuthentication
 }
 
 public enum EscalationReason: Equatable, Sendable {
