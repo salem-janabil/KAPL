@@ -68,7 +68,7 @@ public final class ShieldController: ShieldPresenting {
     // MARK: - Engage / disengage
 
     private func engage() {
-        NSApp.activate()
+        Self.forceActivate()
         rebuildWindows()
 
         savedPresentationOptions = NSApp.presentationOptions
@@ -130,7 +130,7 @@ public final class ShieldController: ShieldPresenting {
     /// Takes focus back; if the system refuses, the shield can no longer
     /// block input and reports a breach.
     private func reclaimFocus() {
-        NSApp.activate()
+        Self.forceActivate()
         windows.first?.makeKeyAndOrderFront(nil)
 
         focusCheck?.cancel()
@@ -141,5 +141,13 @@ public final class ShieldController: ShieldPresenting {
                 self.onBreach?(.lostFocus)
             }
         }
+    }
+
+    /// Cooperative `NSApp.activate()` (macOS 14+) is only a request, and the
+    /// system turns it down for a menu bar app when another app is frontmost:
+    /// the shield came up without focus and escalated right away. The
+    /// deprecated forcing call is still honored, so use it.
+    private static func forceActivate() {
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
